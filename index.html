@@ -1,0 +1,56 @@
+<!doctype html>
+<html>
+
+<head>
+    <title>Samples site</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.1/css/bootstrap.min.css"
+        integrity="sha384-VCmXjywReHh4PwowAiWNagnWcLhlEJLA5buUprzK8rxFgeH0kww/aWY76TfkUoSX" crossorigin="anonymous">
+</head>
+
+<div class="jumbotron jumbotron-fluid">
+	<div class="container">
+
+    <h6 class="display-4">R-MelNet</h1>
+    <hr class="my-4">
+    <p>
+        This site shows text-to-speech (TTS) samples for R-MelNet, as well as samples from baseline comparison models Fastspeech 2 and PortaSpeech
+    <figcaption>R-MelNet</figcaption>
+    <audio
+        controls
+        id="audio1" 
+        src="samples/melnet_trunc_pt33/concat.wav">
+            Your browser does not support the
+            <code>audio</code> element.
+    </audio>
+    </figure>
+    <br>
+    <figcaption>Fastspeech 2</figcaption>
+    <audio
+        controls
+        src="samples/fastspeech2/concat.wav">
+            Your browser does not support the
+            <code>audio</code> element.
+    </audio>
+    </figure>
+    <br>
+    <figcaption>PortaSpeech</figcaption>
+    <audio
+        controls
+        src="samples/portaspeech/concat.wav">
+            Your browser does not support the
+            <code>audio</code> element.
+    </audio>
+    </figure>
+    <script>
+      var audio = document.getElementById("audio1");
+      audio.volume = 0.6;
+    </script>
+    </p>
+
+        </div>
+    </div>
+</body>
+
+</html>
