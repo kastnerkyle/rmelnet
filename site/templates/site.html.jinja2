@@ -1,5 +1,6 @@
 <!doctype html>
 <html>
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/2.0.2/jquery.min.js"></script>
 
 <head>
     <title>{{ page_title }}</title>
@@ -16,36 +17,126 @@
     <hr class="my-4">
     <p>
         This site shows text-to-speech (TTS) samples for R-MelNet, as well as samples from baseline comparison models Fastspeech 2 and PortaSpeech
+    <div id="controllers">
+    </div>
     <figcaption>R-MelNet</figcaption>
-    <audio
-        controls
-        id="audio1" 
-        src="samples/melnet_trunc_pt33/concat.wav">
-            Your browser does not support the
-            <code>audio</code> element.
+    <audio id="rmelnetaudio" controls="controls">
+        <source id="rmelnetsrc" src=""/>
     </audio>
     </figure>
     <br>
     <figcaption>Fastspeech 2</figcaption>
-    <audio
-        controls
-        src="samples/fastspeech2/concat.wav">
-            Your browser does not support the
-            <code>audio</code> element.
+    <audio id="fsaudio" controls="controls">
+        <source id="fssrc" src=""/>
     </audio>
     </figure>
     <br>
     <figcaption>PortaSpeech</figcaption>
-    <audio
-        controls
-        src="samples/portaspeech/concat.wav">
-            Your browser does not support the
-            <code>audio</code> element.
+    <audio id="psaudio" controls="controls">
+        <source id="pssrc" src=""/>
+    </audio>
+    </figure>
+    <figcaption>HTS (Used as initial source to get the phonemes for R-MelNet at inference)</figcaption>
+    <audio id="htsaudio" controls="controls">
+        <source id="htssrc" src=""/>
     </audio>
     </figure>
     <script>
-      var audio = document.getElementById("audio1");
+      var audio = document.getElementById("rmelnetaudio");
       audio.volume = 0.6;
+
+      var multimedia = {
+           "audio" : [
+                     ["", " , , , "],
+                     ["Concat", "samples/melnet_trunc_pt33/concat.wav,samples/fastspeech2/concat.wav,samples/portaspeech/concat.wav,none"],
+                     ["Sample 0", "samples/melnet_trunc_pt33/samples_0/raw_0.wav,samples/fastspeech2/samples_0/fs2_0.flac,samples/portaspeech/samples_0/ps_0.wav,samples/melnet_trunc_pt33/samples_0/tts_0.wav"],
+                     ["Sample 1", "samples/melnet_trunc_pt33/samples_1/raw_1.wav,samples/fastspeech2/samples_1/fs2_1.flac,samples/portaspeech/samples_1/ps_1.wav,samples/melnet_trunc_pt33/samples_1/tts_1.wav"],
+                     ["Sample 2", "samples/melnet_trunc_pt33/samples_2/raw_2.wav,samples/fastspeech2/samples_2/fs2_2.flac,samples/portaspeech/samples_2/ps_2.wav,samples/melnet_trunc_pt33/samples_2/tts_2.wav"],
+                     ["Sample 3", "samples/melnet_trunc_pt33/samples_3/raw_3.wav,samples/fastspeech2/samples_3/fs2_3.flac,samples/portaspeech/samples_3/ps_3.wav,samples/melnet_trunc_pt33/samples_3/tts_3.wav"],
+                     ["Sample 4", "samples/melnet_trunc_pt33/samples_4/raw_4.wav,samples/fastspeech2/samples_4/fs2_4.flac,samples/portaspeech/samples_4/ps_4.wav,samples/melnet_trunc_pt33/samples_4/tts_4.wav"],
+                     ["Sample 5", "samples/melnet_trunc_pt33/samples_5/raw_5.wav,samples/fastspeech2/samples_5/fs2_5.flac,samples/portaspeech/samples_5/ps_5.wav,samples/melnet_trunc_pt33/samples_5/tts_5.wav"],
+                     ["Sample 6", "samples/melnet_trunc_pt33/samples_6/raw_6.wav,samples/fastspeech2/samples_6/fs2_6.flac,samples/portaspeech/samples_6/ps_6.wav,samples/melnet_trunc_pt33/samples_6/tts_6.wav"],
+                     ["Sample 7", "samples/melnet_trunc_pt33/samples_7/raw_7.wav,samples/fastspeech2/samples_7/fs2_7.flac,samples/portaspeech/samples_7/ps_7.wav,samples/melnet_trunc_pt33/samples_7/tts_7.wav"],
+                     ["Sample 8", "samples/melnet_trunc_pt33/samples_8/raw_8.wav,samples/fastspeech2/samples_8/fs2_8.flac,samples/portaspeech/samples_8/ps_8.wav,samples/melnet_trunc_pt33/samples_8/tts_8.wav"],
+                     ["Sample 9", "samples/melnet_trunc_pt33/samples_9/raw_9.wav,samples/fastspeech2/samples_9/fs2_9.flac,samples/portaspeech/samples_9/ps_9.wav,samples/melnet_trunc_pt33/samples_9/tts_9.wav"],
+                     ["Sample 10", "samples/melnet_trunc_pt33/samples_10/raw_10.wav,samples/fastspeech2/samples_10/fs2_10.flac,samples/portaspeech/samples_10/ps_10.wav,samples/melnet_trunc_pt33/samples_10/tts_10.wav"],
+                     ["Sample 11", "samples/melnet_trunc_pt33/samples_11/raw_11.wav,samples/fastspeech2/samples_11/fs2_11.flac,samples/portaspeech/samples_11/ps_11.wav,samples/melnet_trunc_pt33/samples_11/tts_11.wav"],
+                     ["Sample 12", "samples/melnet_trunc_pt33/samples_12/raw_12.wav,samples/fastspeech2/samples_12/fs2_12.flac,samples/portaspeech/samples_12/ps_12.wav,samples/melnet_trunc_pt33/samples_12/tts_12.wav"],
+                     ["Sample 13", "samples/melnet_trunc_pt33/samples_13/raw_13.wav,samples/fastspeech2/samples_13/fs2_13.flac,samples/portaspeech/samples_13/ps_13.wav,samples/melnet_trunc_pt33/samples_13/tts_13.wav"],
+                     ["Sample 14", "samples/melnet_trunc_pt33/samples_14/raw_14.wav,samples/fastspeech2/samples_14/fs2_14.flac,samples/portaspeech/samples_14/ps_14.wav,samples/melnet_trunc_pt33/samples_14/tts_14.wav"],
+                     ["Sample 15", "samples/melnet_trunc_pt33/samples_15/raw_15.wav,samples/fastspeech2/samples_15/fs2_15.flac,samples/portaspeech/samples_15/ps_15.wav,samples/melnet_trunc_pt33/samples_15/tts_15.wav"],
+                     ["Sample 16", "samples/melnet_trunc_pt33/samples_16/raw_16.wav,samples/fastspeech2/samples_16/fs2_16.flac,samples/portaspeech/samples_16/ps_16.wav,samples/melnet_trunc_pt33/samples_16/tts_16.wav"],
+                     ["Sample 17", "samples/melnet_trunc_pt33/samples_17/raw_17.wav,samples/fastspeech2/samples_17/fs2_17.flac,samples/portaspeech/samples_17/ps_17.wav,samples/melnet_trunc_pt33/samples_17/tts_17.wav"],
+                     ["Sample 18", "samples/melnet_trunc_pt33/samples_18/raw_18.wav,samples/fastspeech2/samples_18/fs2_18.flac,samples/portaspeech/samples_18/ps_18.wav,samples/melnet_trunc_pt33/samples_18/tts_18.wav"],
+                     ["Sample 19", "samples/melnet_trunc_pt33/samples_19/raw_19.wav,samples/fastspeech2/samples_19/fs2_19.flac,samples/portaspeech/samples_19/ps_19.wav,samples/melnet_trunc_pt33/samples_19/tts_19.wav"],
+                     ["Sample 20", "samples/melnet_trunc_pt33/samples_20/raw_20.wav,samples/fastspeech2/samples_20/fs2_20.flac,samples/portaspeech/samples_20/ps_20.wav,samples/melnet_trunc_pt33/samples_20/tts_20.wav"],
+                     ["Sample 21", "samples/melnet_trunc_pt33/samples_21/raw_21.wav,samples/fastspeech2/samples_21/fs2_21.flac,samples/portaspeech/samples_21/ps_21.wav,samples/melnet_trunc_pt33/samples_21/tts_21.wav"],
+                     ["Sample 22", "samples/melnet_trunc_pt33/samples_22/raw_22.wav,samples/fastspeech2/samples_22/fs2_22.flac,samples/portaspeech/samples_22/ps_22.wav,samples/melnet_trunc_pt33/samples_22/tts_22.wav"],
+                     ["Sample 23", "samples/melnet_trunc_pt33/samples_23/raw_23.wav,samples/fastspeech2/samples_23/fs2_23.flac,samples/portaspeech/samples_23/ps_23.wav,samples/melnet_trunc_pt33/samples_23/tts_23.wav"],
+                     ["Sample 24", "samples/melnet_trunc_pt33/samples_24/raw_24.wav,samples/fastspeech2/samples_24/fs2_24.flac,samples/portaspeech/samples_24/ps_24.wav,samples/melnet_trunc_pt33/samples_24/tts_24.wav"],
+                    ],
+            };
+        for(var key in multimedia){
+          if(multimedia.hasOwnProperty(key)){
+              var newSelect = "<select name='"+ key +"'>",
+                  key = multimedia[key],
+                  keyN = key.length;
+              for(var i=0; i<keyN; i++){ // loop separately (audios, images) contents
+                  newSelect += "<option value="+ key[i][1] +">"+ key[i][0] +"</option>";
+              }
+              newSelect += "</select>";
+              $('#controllers').append(newSelect);
+          };
+        };
+
+    $(document).ready(function(){
+        $('#controllers').on('change', 'select', function(){change($(this).val())},)
+    }).change();
+
+    function change(sourcePath) {
+      console.log(sourcePath)
+      var audio = document.getElementById("rmelnetaudio");
+      var source = document.getElementById("rmelnetsrc");
+
+      const pathArray = sourcePath.split(",");
+      console.log(pathArray[0])
+      console.log(pathArray[1])
+      console.log(pathArray[2])
+
+      audio.pause();
+      if (pathArray[0]) {
+        source.src = pathArray[0];
+        audio.load();
+        //audio.play();
+      };
+
+      var audio = document.getElementById("fsaudio");
+      var source = document.getElementById("fssrc");
+      audio.pause();
+      if (pathArray[1]) {
+        source.src = pathArray[1];
+        audio.load();
+        //audio.play();
+      };
+
+      var audio = document.getElementById("psaudio");
+      var source = document.getElementById("pssrc");
+      audio.pause();
+      if (pathArray[2]) {
+        source.src = pathArray[2];
+        audio.load();
+        //audio.play();
+      };
+
+      var audio = document.getElementById("htsaudio");
+      var source = document.getElementById("htssrc");
+      audio.pause();
+      if (pathArray[3]) {
+        source.src = pathArray[3];
+        audio.load();
+        //audio.play();
+      };
+    };
     </script>
     </p>
 {% endblock %}
