@@ -1,0 +1,354 @@
+HParams(
+input_dim=1,
+hidden_dim=256,
+use_device=cuda,
+optimizer=adam,
+learning_rate=0.0001,
+melnet_cell_type=gru,
+clip=3.5,
+n_layers_per_tier=[5],
+melnet_init=truncated_normal,
+attention_type=sigmoid_logistic_alt,
+input_symbols=256,
+n_mix=10,
+output_size=1,
+phone_input_symbols=65,
+ascii_input_symbols=65,
+input_image_size=[112, 32],
+real_batch_size=8,
+virtual_batch_size=16,
+random_seed=2122
+)
+model from line 255 of attention_melnet_cmdline_ljspeech_repr_mix.py
+
+    class Model(nn.Module):
+        def __init__(self):
+            super(Model, self).__init__()
+            if input_tier_condition_tag is None:
+                # handle text attention separately
+                self.embed_ascii = Embedding(hp.ascii_input_symbols, hp.hidden_dim, random_state=random_state,
+                                            name="tier_{}_{}_sz_{}_{}_embed_ascii".format(input_tier_input_tag[0], input_tier_input_tag[1], hp.input_image_size[0], hp.input_image_size[1]), device=hp.use_device)
+
+                self.embed_phone = Embedding(hp.phone_input_symbols, hp.hidden_dim, random_state=random_state,
+                                            name="tier_{}_{}_sz_{}_{}_embed_phone".format(input_tier_input_tag[0], input_tier_input_tag[1], hp.input_image_size[0], hp.input_image_size[1]), device=hp.use_device)
+
+                self.embed_mask = Embedding(2, hp.hidden_dim, random_state=random_state,
+                                            name="tier_{}_{}_sz_{}_{}_embed_mask".format(input_tier_input_tag[0], input_tier_input_tag[1], hp.input_image_size[0], hp.input_image_size[1]), device=hp.use_device)
+
+                #self.conv_text = SequenceConv1dStack([hp.hidden_dim], hp.hidden_dim, n_stacks=3, random_state=random_state,
+                #                                     name="tier_{}_{}_sz_{}_{}_conv_text".format(input_tier_input_tag[0], input_tier_input_tag[1], hp.input_image_size[0], hp.input_image_size[1]), device=hp.use_device)
+                # divided by 2 so the output is hp.hidden_dim
+                self.bilstm_text = BiLSTMLayer([hp.hidden_dim], hp.hidden_dim // 2, random_state=random_state,
+                                               init=hp.melnet_init,
+                                               name="tier_{}_{}_sz_{}_{}_bilstm_text".format(input_tier_input_tag[0], input_tier_input_tag[1], hp.input_image_size[0], hp.input_image_size[1]),
+                                               device=hp.use_device)
+
+                self.mn_t = AttentionMelNetTier([hp.input_symbols], hp.input_image_size[0], hp.input_image_size[1],
+                                                hp.hidden_dim, hp.output_size, hp.n_layers_per_tier[0],
+                                                cell_type=hp.melnet_cell_type,
+                                                has_centralized_stack=True,
+                                                has_attention=True,
+                                                attention_type=hp.attention_type,
+                                                random_state=random_state,
+                                                init=hp.melnet_init,
+                                                device=hp.use_device,
+                                                name="tier_{}_{}_sz_{}_{}_mn".format(input_tier_input_tag[0], input_tier_input_tag[1],
+                                                                                     hp.input_image_size[0], hp.input_image_size[1]))
+            else:
+                self.mn_t = AttentionMelNetTier([hp.input_symbols], hp.input_image_size[0], hp.input_image_size[1],
+                                                hp.hidden_dim, hp.output_size, hp.n_layers_per_tier[0],
+                                                has_spatial_condition=True,
+                                                cell_type=hp.melnet_cell_type,
+                                                random_state=random_state,
+                                                init=hp.melnet_init,
+                                                device=hp.use_device,
+                                        name="tier_{}_{}_cond_{}_{}_sz_{}_{}_mn".format(input_tier_input_tag[0], input_tier_input_tag[1],
+                                                                                        input_tier_condition_tag[0], input_tier_condition_tag[1],
+                                                                                        hp.input_image_size[0], hp.input_image_size[1]))
+
+
+        def forward(self, x, x_mask=None,
+                    spatial_condition=None,
+                    memory_condition=None, memory_condition_mask=None,
+                    memory_condition_mask_mask=None,
+                    batch_norm_flag=0.):
+            # for now we don't use the x_mask in the model itself, only in the loss calculations
+            if spatial_condition is None:
+                assert memory_condition is not None
+                mem_a, mem_a_e = self.embed_ascii(memory_condition)
+                mem_p, mem_p_e = self.embed_phone(memory_condition)
+                # condition mask is 0 where it is ascii, 1 where it is phone
+                mem_j = memory_condition_mask[..., None] * mem_p + (1. - memory_condition_mask[..., None]) * mem_a
+                mem_m, mem_m_e = self.embed_mask(memory_condition_mask[..., None])
+
+                mem_f = mem_j + mem_m
+
+                # doing bn in 16 bit is sketch to say the least
+                #mem_conv = self.conv_text([mem_f], batch_norm_flag)
+                # mask based on the actual conditioning mask
+                #mem_conv = mem_conv * memory_condition_mask_mask[..., None]
+                mem_f = mem_f * memory_condition_mask_mask[..., None]
+
+                # use mask in BiLSTM
+                mem_lstm = self.bilstm_text([mem_f], input_mask=memory_condition_mask_mask)
+                # x currently batch, time, freq, 1
+                # mem time, batch, feat
+                # feed mask for attention calculations as well
+                mn_out, alignment, attn_extras = self.mn_t([x], memory=mem_lstm, memory_mask=memory_condition_mask_mask)
+                self.attention_alignment = alignment
+                self.attention_extras = attn_extras
+            else:
+                mn_out = self.mn_t([x], list_of_spatial_conditions=[spatial_condition])
+            return mn_out
+
+
+
+pytorch model representation:
+
+Model(
+  (embed_ascii): Embedding(
+    (th_embed): Embedding(65, 256)
+  )
+  (embed_phone): Embedding(
+    (th_embed): Embedding(65, 256)
+  )
+  (embed_mask): Embedding(
+    (th_embed): Embedding(2, 256)
+  )
+  (bilstm_text): BiLSTMLayer(
+    (in_proj_obj): Linear()
+    (fwd_cell_obj): LSTMCell(
+      (lstm_proj_obj): Linear()
+    )
+    (rev_cell_obj): LSTMCell(
+      (lstm_proj_obj): Linear()
+    )
+  )
+  (mn_t): AttentionMelNetTier(
+    (td_input_proj): Linear()
+    (fd_input_proj): Linear()
+    (tds_lstms_time_fw): ModuleList(
+      (0): GRULayer(
+        (in_proj_obj): Linear()
+        (fwd_cell_obj): GRUCell(
+          (gru_gate_obj): Linear()
+          (gru_proj_obj): Linear()
+        )
+      )
+      (1): GRULayer(
+        (in_proj_obj): Linear()
+        (fwd_cell_obj): GRUCell(
+          (gru_gate_obj): Linear()
+          (gru_proj_obj): Linear()
+        )
+      )
+      (2): GRULayer(
+        (in_proj_obj): Linear()
+        (fwd_cell_obj): GRUCell(
+          (gru_gate_obj): Linear()
+          (gru_proj_obj): Linear()
+        )
+      )
+      (3): GRULayer(
+        (in_proj_obj): Linear()
+        (fwd_cell_obj): GRUCell(
+          (gru_gate_obj): Linear()
+          (gru_proj_obj): Linear()
+        )
+      )
+      (4): GRULayer(
+        (in_proj_obj): Linear()
+        (fwd_cell_obj): GRUCell(
+          (gru_gate_obj): Linear()
+          (gru_proj_obj): Linear()
+        )
+      )
+    )
+    (tds_lstms_freq_fw): ModuleList(
+      (0): GRULayer(
+        (in_proj_obj): Linear()
+        (fwd_cell_obj): GRUCell(
+          (gru_gate_obj): Linear()
+          (gru_proj_obj): Linear()
+        )
+      )
+      (1): GRULayer(
+        (in_proj_obj): Linear()
+        (fwd_cell_obj): GRUCell(
+          (gru_gate_obj): Linear()
+          (gru_proj_obj): Linear()
+        )
+      )
+      (2): GRULayer(
+        (in_proj_obj): Linear()
+        (fwd_cell_obj): GRUCell(
+          (gru_gate_obj): Linear()
+          (gru_proj_obj): Linear()
+        )
+      )
+      (3): GRULayer(
+        (in_proj_obj): Linear()
+        (fwd_cell_obj): GRUCell(
+          (gru_gate_obj): Linear()
+          (gru_proj_obj): Linear()
+        )
+      )
+      (4): GRULayer(
+        (in_proj_obj): Linear()
+        (fwd_cell_obj): GRUCell(
+          (gru_gate_obj): Linear()
+          (gru_proj_obj): Linear()
+        )
+      )
+    )
+    (tds_lstms_freq_bw): ModuleList(
+      (0): GRULayer(
+        (in_proj_obj): Linear()
+        (fwd_cell_obj): GRUCell(
+          (gru_gate_obj): Linear()
+          (gru_proj_obj): Linear()
+        )
+      )
+      (1): GRULayer(
+        (in_proj_obj): Linear()
+        (fwd_cell_obj): GRUCell(
+          (gru_gate_obj): Linear()
+          (gru_proj_obj): Linear()
+        )
+      )
+      (2): GRULayer(
+        (in_proj_obj): Linear()
+        (fwd_cell_obj): GRUCell(
+          (gru_gate_obj): Linear()
+          (gru_proj_obj): Linear()
+        )
+      )
+      (3): GRULayer(
+        (in_proj_obj): Linear()
+        (fwd_cell_obj): GRUCell(
+          (gru_gate_obj): Linear()
+          (gru_proj_obj): Linear()
+        )
+      )
+      (4): GRULayer(
+        (in_proj_obj): Linear()
+        (fwd_cell_obj): GRUCell(
+          (gru_gate_obj): Linear()
+          (gru_proj_obj): Linear()
+        )
+      )
+    )
+    (tds_projs): ModuleList(
+      (0): Linear()
+      (1): Linear()
+      (2): Linear()
+      (3): Linear()
+      (4): Linear()
+    )
+    (fds_projs): ModuleList(
+      (0): Linear()
+      (1): Linear()
+      (2): Linear()
+      (3): Linear()
+      (4): Linear()
+    )
+    (fds_lstms_freq_fw): ModuleList(
+      (0): GRULayer(
+        (in_proj_obj): Linear()
+        (fwd_cell_obj): GRUCell(
+          (gru_gate_obj): Linear()
+          (gru_proj_obj): Linear()
+        )
+      )
+      (1): GRULayer(
+        (in_proj_obj): Linear()
+        (fwd_cell_obj): GRUCell(
+          (gru_gate_obj): Linear()
+          (gru_proj_obj): Linear()
+        )
+      )
+      (2): GRULayer(
+        (in_proj_obj): Linear()
+        (fwd_cell_obj): GRUCell(
+          (gru_gate_obj): Linear()
+          (gru_proj_obj): Linear()
+        )
+      )
+      (3): GRULayer(
+        (in_proj_obj): Linear()
+        (fwd_cell_obj): GRUCell(
+          (gru_gate_obj): Linear()
+          (gru_proj_obj): Linear()
+        )
+      )
+      (4): GRULayer(
+        (in_proj_obj): Linear()
+        (fwd_cell_obj): GRUCell(
+          (gru_gate_obj): Linear()
+          (gru_proj_obj): Linear()
+        )
+      )
+    )
+    (centralized_input_proj): Linear()
+    (cds_centralized_lstms): ModuleList(
+      (0): GRULayer(
+        (in_proj_obj): Linear()
+        (fwd_cell_obj): GRUCell(
+          (gru_gate_obj): Linear()
+          (gru_proj_obj): Linear()
+        )
+      )
+      (1): GRULayer(
+        (in_proj_obj): Linear()
+        (fwd_cell_obj): GRUCell(
+          (gru_gate_obj): Linear()
+          (gru_proj_obj): Linear()
+        )
+      )
+      (2): GRULayer(
+        (in_proj_obj): Linear()
+        (fwd_cell_obj): GRUCell(
+          (gru_gate_obj): Linear()
+          (gru_proj_obj): Linear()
+        )
+      )
+      (3): GRULayer(
+        (in_proj_obj): Linear()
+        (fwd_cell_obj): GRUCell(
+          (gru_gate_obj): Linear()
+          (gru_proj_obj): Linear()
+        )
+      )
+      (4): GRULayer(
+        (in_proj_obj): Linear()
+        (fwd_cell_obj): GRUCell(
+          (gru_gate_obj): Linear()
+          (gru_proj_obj): Linear()
+        )
+      )
+    )
+    (cds_projs): ModuleList(
+      (0): Linear()
+      (1): Linear()
+      (2): Linear()
+      (3): Linear()
+      (4): Linear()
+    )
+    (attn_lstm_cell): GRUCell(
+      (gru_gate_obj): Linear()
+      (gru_proj_obj): Linear()
+    )
+    (attn_proj): Linear()
+    (out_proj): Linear()
+  )
+)
+pytorch optimizer representation:
+
+Adam16 (
+Parameter Group 0
+    betas: (0.9, 0.999)
+    eps: 1e-06
+    initial_lr: 0.0001
+    lr: 0.0001
+    weight_decay: 0
+)

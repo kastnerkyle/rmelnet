@@ -1,0 +1,7 @@
+fast_sample*.ipynb and .py are downloaded versions of the inference ipynb
+
+saved_attention* is a version of the code associated with the models, this includes the *exact* code that was run for this experiment including a full library dump.
+
+The inference notebooks pull from kkpthlib rmelnet_basics https://github.com/kastnerkyle/kkpthlib/tree/rmelnet_basics
+which should serve as a permanent "frozen in time" version of my library at the time when this model was run/developed, for easier browsing.
+The core module is AttentionMelNetTier , in kkpthlib.py which has both the attention implementation, and caching.

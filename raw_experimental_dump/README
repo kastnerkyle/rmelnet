@@ -1,0 +1,3 @@
+This code is currently not runnable, but shows how the inference and sampling pipeline works on my own resources. All models and code necessary are included for reference, but updating the setup so that the sampler for anyone is still a work in progress.
+
+The saved model .tar.gz can be downloaded from the link at https://drive{DOT}google{DOT}com/file/d/1_NdNB2FuJqiBNyD5yJA4fcVmpREaZc7L/view?usp=sharing, along with snapshotted code (which can also be viewed in the raw_code folder of this repository)
